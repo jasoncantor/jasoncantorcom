@@ -1,10 +1,47 @@
 import React, { useRef, useEffect, useState } from 'react';
-import { motion, useScroll, useTransform, useSpring, useInView } from 'framer-motion';
+import { motion, useScroll, useTransform, useSpring, useInView, useReducedMotion } from 'framer-motion';
+
+const useIsMobile = () => {
+  const [isMobile, setIsMobile] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return window.matchMedia('(max-width: 768px), (pointer: coarse)').matches;
+  });
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const mediaQuery = window.matchMedia('(max-width: 768px), (pointer: coarse)');
+    const handleChange = (event) => setIsMobile(event.matches);
+
+    if (mediaQuery.addEventListener) {
+      mediaQuery.addEventListener('change', handleChange);
+    } else {
+      mediaQuery.addListener(handleChange);
+    }
+
+    return () => {
+      if (mediaQuery.removeEventListener) {
+        mediaQuery.removeEventListener('change', handleChange);
+      } else {
+        mediaQuery.removeListener(handleChange);
+      }
+    };
+  }, []);
+
+  return isMobile;
+};
 
 // Animated text that reveals letter by letter
-const AnimatedText = ({ text, className, style, delay = 0 }) => {
+const AnimatedText = ({ text, className, style, delay = 0, reduceMotion = false }) => {
   const ref = useRef(null);
   const isInView = useInView(ref, { once: true, margin: "-100px" });
+
+  if (reduceMotion) {
+    return (
+      <span ref={ref} className={className} style={{ ...style, display: 'inline-block' }}>
+        {text}
+      </span>
+    );
+  }
 
   return (
     <span ref={ref} className={className} style={{ ...style, display: 'inline-block' }}>
@@ -28,7 +65,7 @@ const AnimatedText = ({ text, className, style, delay = 0 }) => {
 };
 
 // Scroll-triggered card component
-const ScrollCard = ({ children, className, style, delay = 0 }) => {
+const ScrollCard = ({ children, className, style, delay = 0, reduceMotion = false }) => {
   const ref = useRef(null);
   const isInView = useInView(ref, { once: true, margin: "-50px" });
 
@@ -37,14 +74,14 @@ const ScrollCard = ({ children, className, style, delay = 0 }) => {
       ref={ref}
       className={className}
       style={style}
-      initial={{ opacity: 0, y: 80, scale: 0.95 }}
-      animate={isInView ? { opacity: 1, y: 0, scale: 1 } : {}}
+      initial={reduceMotion ? false : { opacity: 0, y: 80, scale: 0.95 }}
+      animate={reduceMotion ? { opacity: 1, y: 0, scale: 1 } : (isInView ? { opacity: 1, y: 0, scale: 1 } : {})}
       transition={{
-        duration: 0.7,
+        duration: reduceMotion ? 0 : 0.7,
         delay,
         ease: [0.215, 0.61, 0.355, 1]
       }}
-      whileHover={{
+      whileHover={reduceMotion ? undefined : {
         y: -8,
         scale: 1.02,
         transition: { duration: 0.3 }
@@ -56,13 +93,17 @@ const ScrollCard = ({ children, className, style, delay = 0 }) => {
 };
 
 // Animated counter for stats
-const Counter = ({ value, suffix = '', duration = 2 }) => {
+const Counter = ({ value, suffix = '', duration = 2, reduceMotion = false }) => {
   const ref = useRef(null);
   const isInView = useInView(ref, { once: true });
   const [count, setCount] = useState(0);
 
   useEffect(() => {
     if (isInView) {
+      if (reduceMotion) {
+        setCount(parseInt(value));
+        return;
+      }
       let start = 0;
       const end = parseInt(value);
       const increment = end / (duration * 60);
@@ -83,7 +124,7 @@ const Counter = ({ value, suffix = '', duration = 2 }) => {
 };
 
 // Magnetic button effect
-const MagneticButton = ({ children, className, href, style }) => {
+const MagneticButton = ({ children, className, href, style, target, rel, reduceMotion = false }) => {
   const ref = useRef(null);
   const [position, setPosition] = useState({ x: 0, y: 0 });
 
@@ -103,18 +144,19 @@ const MagneticButton = ({ children, className, href, style }) => {
       href={href}
       className={className}
       style={style}
-      onMouseMove={handleMouse}
-      onMouseLeave={reset}
-      animate={{ x: position.x, y: position.y }}
-      transition={{ type: "spring", stiffness: 150, damping: 15 }}
+      onMouseMove={reduceMotion ? undefined : handleMouse}
+      onMouseLeave={reduceMotion ? undefined : reset}
+      animate={reduceMotion ? { x: 0, y: 0 } : { x: position.x, y: position.y }}
+      transition={reduceMotion ? { duration: 0 } : { type: "spring", stiffness: 150, damping: 15 }}
+      target={target}
+      rel={rel}
     >
       {children}
     </motion.a>
   );
 };
 
-// Expandable Experience Card with scroll-triggered details
-const ExperienceCard = ({ number, title, role, description, details, tags, color }) => {
+const AnimatedExperienceCard = ({ number, title, role, description, details, tags, color }) => {
   const cardRef = useRef(null);
   const { scrollYProgress } = useScroll({
     target: cardRef,
@@ -242,8 +284,44 @@ const ExperienceCard = ({ number, title, role, description, details, tags, color
   );
 };
 
+const StaticExperienceCard = ({ number, title, role, description, details, tags, color }) => (
+  <div className="exp-card">
+    <div className="exp-card-inner">
+      <div className="exp-number" style={{ color }}>{number}</div>
+      <div className="exp-header">
+        <h3 className="exp-title">{title}</h3>
+        <p className="exp-role" style={{ color }}>{role}</p>
+      </div>
+      <div className="exp-details">
+        <p className="exp-description">{description}</p>
+        <ul className="exp-bullets">
+          {details.map((detail, i) => (
+            <li key={i} className="exp-bullet">
+              <span className="bullet-icon" style={{ background: color }}>→</span>
+              {detail}
+            </li>
+          ))}
+        </ul>
+        <div className="exp-tags">
+          {tags.map((tag) => (
+            <span key={tag} className="exp-tag" style={{ borderColor: color, color }}>
+              {tag}
+            </span>
+          ))}
+        </div>
+      </div>
+      <div className="exp-line" style={{ backgroundColor: color }} />
+    </div>
+  </div>
+);
+
+// Expandable Experience Card with scroll-triggered details
+const ExperienceCard = ({ reduceMotion, ...props }) => (
+  reduceMotion ? <StaticExperienceCard {...props} /> : <AnimatedExperienceCard {...props} />
+);
+
 // Parallax floating elements
-const FloatingElement = ({ children, speed = 0.5, style }) => {
+const ParallaxElement = ({ children, speed = 0.5, style }) => {
   const ref = useRef(null);
   const { scrollYProgress } = useScroll();
   const y = useTransform(scrollYProgress, [0, 1], [0, speed * -200]);
@@ -255,8 +333,21 @@ const FloatingElement = ({ children, speed = 0.5, style }) => {
   );
 };
 
+const FloatingElement = ({ reduceMotion = false, ...props }) => (
+  reduceMotion ? (
+    <div className="floating-element" style={props.style}>
+      {props.children}
+    </div>
+  ) : (
+    <ParallaxElement {...props} />
+  )
+);
+
 
 function App() {
+  const isMobile = useIsMobile();
+  const prefersReducedMotion = useReducedMotion();
+  const shouldReduceMotion = prefersReducedMotion || isMobile;
   const { scrollYProgress } = useScroll();
   const scaleProgress = useTransform(scrollYProgress, [0, 0.1], [1, 0.95]);
   const opacityProgress = useTransform(scrollYProgress, [0, 0.15], [1, 0]);
@@ -264,26 +355,28 @@ function App() {
   return (
     <div className="scroll-container">
       {/* Progress bar */}
-      <motion.div
-        className="scroll-progress"
-        style={{ scaleX: scrollYProgress }}
-      />
+      {!shouldReduceMotion && (
+        <motion.div
+          className="scroll-progress"
+          style={{ scaleX: scrollYProgress }}
+        />
+      )}
 
       {/* Floating background elements */}
-      <FloatingElement speed={0.3} style={{ position: 'fixed', top: '10%', left: '5%', zIndex: 0 }}>
+      <FloatingElement reduceMotion={shouldReduceMotion} speed={0.3} style={{ position: 'fixed', top: '10%', left: '5%', zIndex: 0 }}>
         <div className="float-orb float-orb-1" />
       </FloatingElement>
-      <FloatingElement speed={0.5} style={{ position: 'fixed', top: '60%', right: '10%', zIndex: 0 }}>
+      <FloatingElement reduceMotion={shouldReduceMotion} speed={0.5} style={{ position: 'fixed', top: '60%', right: '10%', zIndex: 0 }}>
         <div className="float-orb float-orb-2" />
       </FloatingElement>
-      <FloatingElement speed={0.2} style={{ position: 'fixed', bottom: '20%', left: '15%', zIndex: 0 }}>
+      <FloatingElement reduceMotion={shouldReduceMotion} speed={0.2} style={{ position: 'fixed', bottom: '20%', left: '15%', zIndex: 0 }}>
         <div className="float-orb float-orb-3" />
       </FloatingElement>
 
       {/* Hero Section - Full viewport */}
       <motion.section
         className="hero-section"
-        style={{ scale: scaleProgress }}
+        style={{ scale: shouldReduceMotion ? 1 : scaleProgress }}
       >
         <nav className="nav-fixed">
           <motion.div
@@ -299,59 +392,61 @@ function App() {
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.6 }}
           >
-            <MagneticButton href="mailto:jcantor@arizona.edu" className="btn btn-outline nav-btn">
+            <MagneticButton reduceMotion={shouldReduceMotion} href="mailto:jcantor@arizona.edu" className="btn btn-outline nav-btn">
               Contact
             </MagneticButton>
           </motion.div>
         </nav>
 
         <div className="hero-content">
-          <motion.div
-            className="hero-badge"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-          >
-            <span className="pulse-dot" />
-            Available for opportunities
-          </motion.div>
-
           <h1 className="hero-title">
-            <AnimatedText text="Jason" delay={0.3} />
+            <AnimatedText text="Jason" delay={0.1} reduceMotion={shouldReduceMotion} />
             <br />
-            <AnimatedText text="Cantor" delay={0.5} className="hero-title-accent" />
+            <AnimatedText text="Cantor" delay={0.25} className="hero-title-accent" reduceMotion={shouldReduceMotion} />
           </h1>
 
           <motion.p
             className="hero-subtitle"
-            initial={{ opacity: 0, y: 30 }}
+            initial={shouldReduceMotion ? false : { opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 1, duration: 0.6 }}
+            transition={{ delay: shouldReduceMotion ? 0 : 0.6, duration: shouldReduceMotion ? 0 : 0.6 }}
           >
-            Automation & Systems Analyst • AI
+            Automation &amp; Systems Analyst building AI-driven workflows and internal tools.
           </motion.p>
 
           <motion.div
             className="hero-cta"
-            initial={{ opacity: 0, y: 30 }}
+            initial={shouldReduceMotion ? false : { opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 1.2, duration: 0.6 }}
+            transition={{ delay: shouldReduceMotion ? 0 : 0.8, duration: shouldReduceMotion ? 0 : 0.6 }}
           >
-            <MagneticButton href="https://github.com/jasoncantor" className="btn btn-outline btn-large" target="_blank">
-              GitHub
-            </MagneticButton>
-            <MagneticButton href="#work" className="btn btn-primary btn-large">
+            <MagneticButton reduceMotion={shouldReduceMotion} href="#work" className="btn btn-primary btn-large">
               View My Work
             </MagneticButton>
-            <MagneticButton
-              href="https://www.linkedin.com/in/jason-cantor/"
-              className="btn btn-outline btn-large"
-              target="_blank"
-              rel="noreferrer"
-            >
-              LinkedIn
-            </MagneticButton>
+            <div className="hero-secondary">
+              <MagneticButton reduceMotion={shouldReduceMotion} href="https://github.com/jasoncantor" className="btn btn-link" target="_blank" rel="noreferrer">
+                GitHub
+              </MagneticButton>
+              <MagneticButton
+                href="https://www.linkedin.com/in/jason-cantor/"
+                className="btn btn-link"
+                target="_blank"
+                rel="noreferrer"
+                reduceMotion={shouldReduceMotion}
+              >
+                LinkedIn
+              </MagneticButton>
+            </div>
           </motion.div>
+
+          <motion.p
+            className="hero-note"
+            initial={shouldReduceMotion ? false : { opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: shouldReduceMotion ? 0 : 1, duration: shouldReduceMotion ? 0 : 0.6 }}
+          >
+            Available for opportunities
+          </motion.p>
         </div>
 
         <motion.div
@@ -359,16 +454,20 @@ function App() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 1.5 }}
-          style={{ opacity: opacityProgress }}
+          style={{ opacity: shouldReduceMotion ? 1 : opacityProgress }}
         >
           <span>Scroll to explore</span>
-          <motion.div
-            className="scroll-arrow"
-            animate={{ y: [0, 10, 0] }}
-            transition={{ duration: 1.5, repeat: Infinity }}
-          >
-            ↓
-          </motion.div>
+          {shouldReduceMotion ? (
+            <div className="scroll-arrow">↓</div>
+          ) : (
+            <motion.div
+              className="scroll-arrow"
+              animate={{ y: [0, 10, 0] }}
+              transition={{ duration: 1.5, repeat: Infinity }}
+            >
+              ↓
+            </motion.div>
+          )}
         </motion.div>
       </motion.section>
 
@@ -376,16 +475,16 @@ function App() {
       <section className="stats-section">
         <div className="container">
           <div className="stats-grid">
-            <ScrollCard className="stat-card" delay={0}>
-              <div className="stat-number"><Counter value={20} suffix="+" /></div>
+            <ScrollCard className="stat-card" delay={0} reduceMotion={shouldReduceMotion}>
+              <div className="stat-number"><Counter value={20} suffix="+" reduceMotion={shouldReduceMotion} /></div>
               <div className="stat-label">Hours/Week Saved</div>
             </ScrollCard>
-            <ScrollCard className="stat-card" delay={0.1}>
-              <div className="stat-number"><Counter value={20} suffix="+" /></div>
+            <ScrollCard className="stat-card" delay={0.1} reduceMotion={shouldReduceMotion}>
+              <div className="stat-number"><Counter value={20} suffix="+" reduceMotion={shouldReduceMotion} /></div>
               <div className="stat-label">Tools & Apps Built</div>
             </ScrollCard>
-            <ScrollCard className="stat-card" delay={0.2}>
-              <div className="stat-number"><Counter value={10} suffix="+" /></div>
+            <ScrollCard className="stat-card" delay={0.2} reduceMotion={shouldReduceMotion}>
+              <div className="stat-number"><Counter value={10} suffix="+" reduceMotion={shouldReduceMotion} /></div>
               <div className="stat-label">Systems Integrated</div>
             </ScrollCard>
           </div>
@@ -406,6 +505,7 @@ function App() {
 
           <div className="experience-list">
             <ExperienceCard
+              reduceMotion={shouldReduceMotion}
               number="01"
               title="Arizona Athletics"
               role="Automation & Systems Analyst"
@@ -421,6 +521,7 @@ function App() {
             />
 
             <ExperienceCard
+              reduceMotion={shouldReduceMotion}
               number="02"
               title="Arizona Athletics"
               role="Automation & Systems Analyst"
@@ -436,6 +537,7 @@ function App() {
             />
 
             <ExperienceCard
+              reduceMotion={shouldReduceMotion}
               number="03"
               title="Camp Sea Gull & Camp Seafarer"
               role="Archery Program Director & Instructor, Camp Counselor"
@@ -466,18 +568,18 @@ function App() {
           </motion.h2>
 
           <div className="skills-grid">
-            <ScrollCard className="skill-category" delay={0}>
+            <ScrollCard className="skill-category" delay={0} reduceMotion={shouldReduceMotion}>
               <h3 className="skill-title">Programming Languages</h3>
               <div className="skill-items">
                 {['Python', 'Java', 'JavaScript', 'HTML/CSS', 'Swift'].map((s, i) => (
                   <motion.span
                     key={s}
                     className="skill-pill"
-                    initial={{ opacity: 0, scale: 0.8 }}
-                    whileInView={{ opacity: 1, scale: 1 }}
+                    initial={shouldReduceMotion ? false : { opacity: 0, scale: 0.8 }}
+                    whileInView={shouldReduceMotion ? undefined : { opacity: 1, scale: 1 }}
                     viewport={{ once: true }}
                     transition={{ delay: i * 0.1 }}
-                    whileHover={{ scale: 1.1, backgroundColor: '#AB0520', color: '#fff' }}
+                    whileHover={shouldReduceMotion ? undefined : { scale: 1.1, backgroundColor: '#AB0520', color: '#fff' }}
                   >
                     {s}
                   </motion.span>
@@ -485,18 +587,18 @@ function App() {
               </div>
             </ScrollCard>
 
-            <ScrollCard className="skill-category" delay={0.15}>
+            <ScrollCard className="skill-category" delay={0.15} reduceMotion={shouldReduceMotion}>
               <h3 className="skill-title">Technologies</h3>
               <div className="skill-items">
                 {['Git', 'Microsoft Power Platform', 'Azure', 'Linux', 'macOS', 'Windows'].map((s, i) => (
                   <motion.span
                     key={s}
                     className="skill-pill"
-                    initial={{ opacity: 0, scale: 0.8 }}
-                    whileInView={{ opacity: 1, scale: 1 }}
+                    initial={shouldReduceMotion ? false : { opacity: 0, scale: 0.8 }}
+                    whileInView={shouldReduceMotion ? undefined : { opacity: 1, scale: 1 }}
                     viewport={{ once: true }}
                     transition={{ delay: i * 0.1 }}
-                    whileHover={{ scale: 1.1, backgroundColor: '#AB0520', color: '#fff' }}
+                    whileHover={shouldReduceMotion ? undefined : { scale: 1.1, backgroundColor: '#AB0520', color: '#fff' }}
                   >
                     {s}
                   </motion.span>
@@ -504,18 +606,18 @@ function App() {
               </div>
             </ScrollCard>
 
-            <ScrollCard className="skill-category" delay={0.3}>
+            <ScrollCard className="skill-category" delay={0.3} reduceMotion={shouldReduceMotion}>
               <h3 className="skill-title">Soft Skills</h3>
               <div className="skill-items">
                 {['Leadership', 'Communication', 'Teamwork', 'Problem-Solving'].map((s, i) => (
                   <motion.span
                     key={s}
                     className="skill-pill"
-                    initial={{ opacity: 0, scale: 0.8 }}
-                    whileInView={{ opacity: 1, scale: 1 }}
+                    initial={shouldReduceMotion ? false : { opacity: 0, scale: 0.8 }}
+                    whileInView={shouldReduceMotion ? undefined : { opacity: 1, scale: 1 }}
                     viewport={{ once: true }}
                     transition={{ delay: i * 0.1 }}
-                    whileHover={{ scale: 1.1, backgroundColor: '#AB0520', color: '#fff' }}
+                    whileHover={shouldReduceMotion ? undefined : { scale: 1.1, backgroundColor: '#AB0520', color: '#fff' }}
                   >
                     {s}
                   </motion.span>
@@ -523,18 +625,18 @@ function App() {
               </div>
             </ScrollCard>
 
-            <ScrollCard className="skill-category" delay={0.45}>
+            <ScrollCard className="skill-category" delay={0.45} reduceMotion={shouldReduceMotion}>
               <h3 className="skill-title">Business Skills</h3>
               <div className="skill-items">
                 {['Accounting', 'Marketing', 'Sales'].map((s, i) => (
                   <motion.span
                     key={s}
                     className="skill-pill"
-                    initial={{ opacity: 0, scale: 0.8 }}
-                    whileInView={{ opacity: 1, scale: 1 }}
+                    initial={shouldReduceMotion ? false : { opacity: 0, scale: 0.8 }}
+                    whileInView={shouldReduceMotion ? undefined : { opacity: 1, scale: 1 }}
                     viewport={{ once: true }}
                     transition={{ delay: i * 0.1 }}
-                    whileHover={{ scale: 1.1, backgroundColor: '#AB0520', color: '#fff' }}
+                    whileHover={shouldReduceMotion ? undefined : { scale: 1.1, backgroundColor: '#AB0520', color: '#fff' }}
                   >
                     {s}
                   </motion.span>
@@ -548,7 +650,7 @@ function App() {
       {/* GitHub Section */}
       <section className="github-section">
         <div className="container">
-          <ScrollCard className="github-card">
+          <ScrollCard className="github-card" reduceMotion={shouldReduceMotion}>
             <div className="card-title">GitHub Activity</div>
             <p className="github-desc">Live contribution tracker synced from GitHub.</p>
             <div className="github-activity" aria-label="GitHub contribution graph">
@@ -564,6 +666,7 @@ function App() {
               rel="noreferrer"
               className="btn btn-outline"
               style={{ marginTop: '24px', alignSelf: 'flex-start' }}
+              reduceMotion={shouldReduceMotion}
             >
               View on GitHub
             </MagneticButton>
@@ -581,9 +684,9 @@ function App() {
             transition={{ duration: 0.6 }}
           >
             <h2 className="contact-title">
-              <AnimatedText text="Let's Build" />
+              <AnimatedText text="Let's Build" reduceMotion={shouldReduceMotion} />
               <br />
-              <AnimatedText text="Something Great" className="text-accent" delay={0.3} />
+              <AnimatedText text="Something Great" className="text-accent" delay={0.3} reduceMotion={shouldReduceMotion} />
             </h2>
             <motion.p
               className="contact-subtitle"
@@ -600,7 +703,7 @@ function App() {
               viewport={{ once: true }}
               transition={{ delay: 1 }}
             >
-              <MagneticButton href="mailto:jcantor@arizona.edu" className="contact-email">
+              <MagneticButton href="mailto:jcantor@arizona.edu" className="contact-email" reduceMotion={shouldReduceMotion}>
                 jcantor@arizona.edu
               </MagneticButton>
             </motion.div>
