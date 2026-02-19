@@ -17,6 +17,7 @@
   --accent-secondary: var(--az-navy);
   --accent-dim: rgba(171, 5, 32, 0.15);
   --accent-glow: rgba(171, 5, 32, 0.4);
+  --status-green: #22c55e;
   --navy-dim: rgba(12, 35, 75, 0.35);
   --hero-pulse-duration: 2000ms;
   --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
@@ -212,7 +213,7 @@ h1, h2, h3, h4, h5, h6 {
   content: '';
   width: 8px;
   height: 8px;
-  background: var(--accent);
+  background: var(--status-green);
   border-radius: 50%;
   animation: pulse var(--hero-pulse-duration) infinite;
 }
