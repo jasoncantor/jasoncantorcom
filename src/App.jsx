@@ -5,10 +5,15 @@ const EASTER_TAP_TARGET = 6;
 const EASTER_COOLDOWN_MS = 30000;
 const BRIGHT_PHASE_WINDOW = 0.18;
 const DEFAULT_PULSE_DURATION_MS = 2000;
+const HOVER_CAPABLE_MEDIA_QUERY = '(hover: hover) and (pointer: fine)';
 const EMAIL_ADDRESS = 'jcantor@arizona.edu';
 const PREFILLED_SUBJECT = encodeURIComponent('Found your hidden portfolio easter egg');
 const PREFILLED_BODY = encodeURIComponent(
   "Hey Jason,\n\nI found the hidden easter egg on your site and wanted to reach out.\n\nLet's connect."
+);
+
+const getInitialHoverCapability = () => (
+  typeof window !== 'undefined' && window.matchMedia(HOVER_CAPABLE_MEDIA_QUERY).matches
 );
 
 const parseDurationToMs = (durationValue) => {
@@ -59,29 +64,62 @@ const useScrollAnimation = (threshold = 0.1) => {
   return [ref, isVisible];
 };
 
-const AccordionItem = ({
+const ExperienceCard = ({
+  id,
   company,
   role,
   date,
   description,
   details,
   tags,
-  isActive,
-  onClick,
+  isOpen,
+  isHoverCapable,
+  onHoverOpen,
+  onToggleOpen,
   variant = 'up',
   delay = 0,
   threshold = 0.1
 }) => {
   const [animationRef, isVisible] = useScrollAnimation(threshold);
+  const prefersReducedMotion = useReducedMotion();
+  const contentId = `experience-details-${id}`;
+
+  const handleActivate = () => {
+    if (isHoverCapable) {
+      onHoverOpen(id);
+      return;
+    }
+    onToggleOpen(id);
+  };
+
+  const handleMouseEnter = () => {
+    if (!isHoverCapable) return;
+    onHoverOpen(id);
+  };
+
+  const handleKeyDown = (event) => {
+    if (event.key !== 'Enter' && event.key !== ' ') return;
+    event.preventDefault();
+    handleActivate();
+  };
 
   return (
     <div
       ref={animationRef}
-      className={`accordion-item animate-on-scroll ${isActive ? 'active' : ''} ${isVisible ? 'visible' : ''}`}
+      className={`accordion-item animate-on-scroll ${isOpen ? 'active' : ''} ${isVisible ? 'visible' : ''}`}
       data-variant={variant}
       style={{ '--reveal-delay': `${delay}ms` }}
+      onMouseEnter={handleMouseEnter}
     >
-      <button className="accordion-header" onClick={onClick}>
+      <div
+        className="accordion-header"
+        tabIndex={0}
+        role="button"
+        aria-expanded={isOpen}
+        aria-controls={contentId}
+        onClick={handleActivate}
+        onKeyDown={handleKeyDown}
+      >
         <div className="accordion-left">
           <span className="accordion-company">{company}</span>
           <span className="accordion-role">{role}</span>
@@ -90,9 +128,20 @@ const AccordionItem = ({
         <svg className="accordion-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
           <polyline points="6 9 12 15 18 9" />
         </svg>
-      </button>
-      <div className="accordion-content">
-        <div className="accordion-inner">
+      </div>
+      <motion.div
+        id={contentId}
+        className={`accordion-content ${isOpen ? 'is-open' : 'is-collapsed'}`}
+        initial={false}
+        animate={{ height: isOpen ? 'auto' : 0 }}
+        transition={prefersReducedMotion ? { duration: 0 } : { duration: 0.34, ease: [0.22, 1, 0.36, 1] }}
+      >
+        <motion.div
+          className="accordion-inner"
+          initial={false}
+          animate={{ opacity: isOpen ? 1 : 0 }}
+          transition={prefersReducedMotion ? { duration: 0 } : { duration: 0.22, delay: isOpen ? 0.08 : 0 }}
+        >
           <p className="accordion-description">{description}</p>
           <ul className="accordion-list">
             {details.map((detail, i) => (
@@ -104,8 +153,15 @@ const AccordionItem = ({
               <span key={tag} className="accordion-tag">{tag}</span>
             ))}
           </div>
-        </div>
-      </div>
+        </motion.div>
+      </motion.div>
+      <motion.span
+        className="accordion-bottom-line"
+        aria-hidden="true"
+        initial={false}
+        animate={{ scaleX: isOpen ? 1 : 0 }}
+        transition={prefersReducedMotion ? { duration: 0 } : { type: 'spring', stiffness: 320, damping: 34, mass: 0.75 }}
+      />
     </div>
   );
 };
@@ -166,7 +222,8 @@ const AnimatedSection = ({
 };
 
 function App() {
-  const [activeIndex, setActiveIndex] = useState(null);
+  const [activeExperienceId, setActiveExperienceId] = useState(null);
+  const [isHoverCapable, setIsHoverCapable] = useState(getInitialHoverCapability);
   const [tapProgress, setTapProgress] = useState(0);
   const [lastAcceptedCycle, setLastAcceptedCycle] = useState(null);
   const [cooldownUntil, setCooldownUntil] = useState(0);
@@ -179,8 +236,12 @@ function App() {
   const heroBadgeRef = useRef(null);
   const prefersReducedMotion = useReducedMotion();
 
-  const handleAccordionClick = (index) => {
-    setActiveIndex(activeIndex === index ? null : index);
+  const handleExperienceHoverOpen = (id) => {
+    setActiveExperienceId(id);
+  };
+
+  const handleExperienceToggleOpen = (id) => {
+    setActiveExperienceId((currentActiveId) => (currentActiveId === id ? null : id));
   };
 
   useEffect(() => {
@@ -191,6 +252,25 @@ function App() {
     if (cssPulseDuration) {
       setPulseDurationMs(cssPulseDuration);
     }
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined;
+
+    const mediaQuery = window.matchMedia(HOVER_CAPABLE_MEDIA_QUERY);
+    const handleChange = (event) => {
+      setIsHoverCapable(event.matches);
+    };
+
+    setIsHoverCapable(mediaQuery.matches);
+
+    if (mediaQuery.addEventListener) {
+      mediaQuery.addEventListener('change', handleChange);
+      return () => mediaQuery.removeEventListener('change', handleChange);
+    }
+
+    mediaQuery.addListener(handleChange);
+    return () => mediaQuery.removeListener(handleChange);
   }, []);
 
   useEffect(() => {
@@ -315,6 +395,7 @@ function App() {
 
   const experiences = [
     {
+      id: 'arizona-athletics',
       company: "Arizona Athletics",
       role: "Automation & Systems Analyst",
       date: "2022 - Present",
@@ -330,6 +411,7 @@ function App() {
       tags: ["Python", "JavaScript", "HTML/CSS", "Power Platform", "Power Apps", "Power Automate", "APIs", "Dashboards"]
     },
     {
+      id: 'camp-sea-gull-seafarer',
       company: "Camp Sea Gull & Camp Seafarer",
       role: "Archery Program Director & Instructor",
       date: "Summer 21-23",
@@ -432,11 +514,13 @@ function App() {
 
             <div className="accordion">
               {experiences.map((exp, index) => (
-                <AccordionItem
-                  key={index}
+                <ExperienceCard
+                  key={exp.id}
                   {...exp}
-                  isActive={activeIndex === index}
-                  onClick={() => handleAccordionClick(index)}
+                  isOpen={activeExperienceId === exp.id}
+                  isHoverCapable={isHoverCapable}
+                  onHoverOpen={handleExperienceHoverOpen}
+                  onToggleOpen={handleExperienceToggleOpen}
                   variant={index % 2 === 0 ? 'left' : 'right'}
                   delay={index * 140}
                   threshold={0.15}
