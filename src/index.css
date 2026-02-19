@@ -18,6 +18,7 @@
   --accent-dim: rgba(171, 5, 32, 0.15);
   --accent-glow: rgba(171, 5, 32, 0.4);
   --navy-dim: rgba(12, 35, 75, 0.35);
+  --hero-pulse-duration: 2000ms;
   --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
   --font-mono: 'JetBrains Mono', monospace;
 }
@@ -213,7 +214,24 @@ h1, h2, h3, h4, h5, h6 {
   height: 8px;
   background: var(--accent);
   border-radius: 50%;
-  animation: pulse 2s infinite;
+  animation: pulse var(--hero-pulse-duration) infinite;
+}
+
+.hero-label-trigger {
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.hero-label-trigger:active {
+  transform: scale(0.98);
+}
+
+.hero-label-trigger:focus-visible {
+  outline: 2px solid rgba(171, 5, 32, 0.85);
+  outline-offset: 4px;
+  box-shadow: 0 0 0 5px rgba(171, 5, 32, 0.18);
 }
 
 @keyframes pulse {
@@ -349,9 +367,10 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .accordion-header {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) max-content 24px;
+  column-gap: 24px;
   align-items: center;
-  justify-content: space-between;
   padding: 20px 24px;
   cursor: pointer;
   width: 100%;
@@ -366,6 +385,7 @@ h1, h2, h3, h4, h5, h6 {
   display: flex;
   flex-direction: column;
   gap: 4px;
+  min-width: 0;
 }
 
 @media (min-width: 640px) {
@@ -389,7 +409,9 @@ h1, h2, h3, h4, h5, h6 {
 .accordion-date {
   color: var(--text-muted);
   font-size: 0.85rem;
-  flex-shrink: 0;
+  justify-self: end;
+  text-align: right;
+  white-space: nowrap;
 }
 
 .accordion-icon {
@@ -397,7 +419,7 @@ h1, h2, h3, h4, h5, h6 {
   height: 24px;
   color: var(--text-muted);
   transition: transform 0.3s, color 0.2s;
-  flex-shrink: 0;
+  justify-self: end;
 }
 
 .accordion-item.active .accordion-icon {
@@ -601,6 +623,130 @@ h1, h2, h3, h4, h5, h6 {
   font-size: 0.85rem;
 }
 
+.egg-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(2, 8, 20, 0.8);
+  backdrop-filter: blur(10px);
+}
+
+.egg-celebration {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.egg-particle {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: var(--size, 8px);
+  height: var(--size, 8px);
+  border-radius: 2px;
+  background: linear-gradient(135deg, #f4f7ff, var(--accent));
+  opacity: 0;
+  transform: translate(-50%, -50%) scale(0.1);
+  animation: egg-burst 900ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation-delay: var(--delay, 0ms);
+}
+
+@keyframes egg-burst {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.2);
+  }
+  20% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform:
+      translate(
+        calc(-50% + var(--tx, 0px)),
+        calc(-50% + var(--ty, 0px))
+      )
+      rotate(var(--rot, 120deg))
+      scale(1);
+  }
+}
+
+.egg-modal {
+  position: relative;
+  width: min(560px, 100%);
+  border: 1px solid rgba(171, 5, 32, 0.45);
+  border-radius: 18px;
+  background:
+    linear-gradient(140deg, rgba(171, 5, 32, 0.14), rgba(12, 35, 75, 0.82)),
+    #071126;
+  box-shadow: 0 32px 80px rgba(0, 0, 0, 0.48);
+  padding: 28px 24px 22px;
+}
+
+.egg-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 36px;
+  height: 36px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text);
+  font-size: 1rem;
+  cursor: pointer;
+}
+
+.egg-close:focus-visible {
+  outline: 2px solid rgba(171, 5, 32, 0.85);
+  outline-offset: 3px;
+}
+
+.egg-envelope {
+  font-size: 2.5rem;
+  margin-bottom: 10px;
+  line-height: 1;
+}
+
+.egg-title {
+  font-size: clamp(1.35rem, 3vw, 1.65rem);
+  margin-bottom: 10px;
+}
+
+.egg-description {
+  color: var(--text-secondary);
+  line-height: 1.7;
+  margin-bottom: 20px;
+}
+
+.egg-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.egg-action {
+  min-width: 150px;
+}
+
+.egg-feedback {
+  margin-top: 14px;
+  color: var(--text-secondary);
+  min-height: 24px;
+  font-size: 0.9rem;
+}
+
+@media (max-width: 720px) {
+  .accordion-header {
+    column-gap: 14px;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 0.01ms !important;
@@ -617,6 +763,10 @@ h1, h2, h3, h4, h5, h6 {
     transform: none !important;
     filter: none !important;
     transition-delay: 0ms !important;
+  }
+
+  .egg-celebration {
+    display: none;
   }
 }
 

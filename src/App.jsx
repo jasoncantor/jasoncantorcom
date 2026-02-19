@@ -1,4 +1,32 @@
 import { useState, useEffect, useRef } from 'react';
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
+
+const EASTER_TAP_TARGET = 6;
+const EASTER_COOLDOWN_MS = 30000;
+const BRIGHT_PHASE_WINDOW = 0.18;
+const DEFAULT_PULSE_DURATION_MS = 2000;
+const EMAIL_ADDRESS = 'jcantor@arizona.edu';
+const PREFILLED_SUBJECT = encodeURIComponent('Found your hidden portfolio easter egg');
+const PREFILLED_BODY = encodeURIComponent(
+  "Hey Jason,\n\nI found the hidden easter egg on your site and wanted to reach out.\n\nLet's connect."
+);
+
+const parseDurationToMs = (durationValue) => {
+  if (!durationValue) return null;
+
+  const value = durationValue.trim();
+  if (value.endsWith('ms')) {
+    const ms = Number.parseFloat(value);
+    return Number.isFinite(ms) ? ms : null;
+  }
+
+  if (value.endsWith('s')) {
+    const s = Number.parseFloat(value);
+    return Number.isFinite(s) ? s * 1000 : null;
+  }
+
+  return null;
+};
 
 const useScrollAnimation = (threshold = 0.1) => {
   const ref = useRef(null);
@@ -108,16 +136,29 @@ const AnimatedSection = ({
   variant = 'up',
   delay = 0,
   threshold = 0.1,
-  as: Component = 'div'
+  as: Component = 'div',
+  elementRef,
+  style,
+  ...rest
 }) => {
   const [ref, isVisible] = useScrollAnimation(threshold);
+  const setRefs = (node) => {
+    ref.current = node;
+    if (!elementRef) return;
+    if (typeof elementRef === 'function') {
+      elementRef(node);
+      return;
+    }
+    elementRef.current = node;
+  };
 
   return (
     <Component
-      ref={ref}
+      ref={setRefs}
       className={`animate-on-scroll ${isVisible ? 'visible' : ''} ${className}`.trim()}
       data-variant={variant}
-      style={{ '--reveal-delay': `${delay}ms` }}
+      style={{ ...style, '--reveal-delay': `${delay}ms` }}
+      {...rest}
     >
       {children}
     </Component>
@@ -126,10 +167,151 @@ const AnimatedSection = ({
 
 function App() {
   const [activeIndex, setActiveIndex] = useState(null);
+  const [tapProgress, setTapProgress] = useState(0);
+  const [lastAcceptedCycle, setLastAcceptedCycle] = useState(null);
+  const [cooldownUntil, setCooldownUntil] = useState(0);
+  const [isEasterEggOpen, setIsEasterEggOpen] = useState(false);
+  const [copyState, setCopyState] = useState('idle');
+  const [pulseDurationMs, setPulseDurationMs] = useState(DEFAULT_PULSE_DURATION_MS);
+  const pulseStartRef = useRef(0);
+  const copyFeedbackTimeoutRef = useRef(null);
+  const easterEggCloseButtonRef = useRef(null);
+  const heroBadgeRef = useRef(null);
+  const prefersReducedMotion = useReducedMotion();
 
   const handleAccordionClick = (index) => {
     setActiveIndex(activeIndex === index ? null : index);
   };
+
+  useEffect(() => {
+    pulseStartRef.current = performance.now();
+    const cssPulseDuration = parseDurationToMs(
+      getComputedStyle(document.documentElement).getPropertyValue('--hero-pulse-duration')
+    );
+    if (cssPulseDuration) {
+      setPulseDurationMs(cssPulseDuration);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!isEasterEggOpen) return undefined;
+
+    const onKeyDown = (event) => {
+      if (event.key === 'Escape') {
+        setIsEasterEggOpen(false);
+        window.requestAnimationFrame(() => {
+          heroBadgeRef.current?.focus();
+        });
+      }
+    };
+
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [isEasterEggOpen]);
+
+  useEffect(() => {
+    if (!isEasterEggOpen) return undefined;
+
+    const timeoutId = window.setTimeout(() => {
+      easterEggCloseButtonRef.current?.focus();
+    }, 80);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [isEasterEggOpen]);
+
+  useEffect(
+    () => () => {
+      if (copyFeedbackTimeoutRef.current) {
+        window.clearTimeout(copyFeedbackTimeoutRef.current);
+      }
+    },
+    []
+  );
+
+  const resetTapSequence = () => {
+    setTapProgress(0);
+    setLastAcceptedCycle(null);
+  };
+
+  const closeEasterEgg = () => {
+    setIsEasterEggOpen(false);
+    window.requestAnimationFrame(() => {
+      heroBadgeRef.current?.focus();
+    });
+  };
+
+  const openEasterEgg = () => {
+    setCooldownUntil(Date.now() + EASTER_COOLDOWN_MS);
+    setIsEasterEggOpen(true);
+    setCopyState('idle');
+    resetTapSequence();
+  };
+
+  const handleHeroLabelTap = () => {
+    if (Date.now() < cooldownUntil) return;
+
+    const elapsed = performance.now() - pulseStartRef.current;
+    const cycle = Math.floor(elapsed / pulseDurationMs);
+    const phase = (elapsed % pulseDurationMs) / pulseDurationMs;
+    const isBrightPhase = phase <= BRIGHT_PHASE_WINDOW || phase >= 1 - BRIGHT_PHASE_WINDOW;
+
+    if (!isBrightPhase) {
+      resetTapSequence();
+      return;
+    }
+
+    if (lastAcceptedCycle === cycle) {
+      return;
+    }
+
+    if (lastAcceptedCycle !== null && cycle !== lastAcceptedCycle + 1) {
+      setTapProgress(1);
+      setLastAcceptedCycle(cycle);
+      return;
+    }
+
+    const nextProgress = tapProgress + 1;
+
+    if (nextProgress >= EASTER_TAP_TARGET) {
+      openEasterEgg();
+      return;
+    }
+
+    setTapProgress(nextProgress);
+    setLastAcceptedCycle(cycle);
+  };
+
+  const handleCopyEmail = async () => {
+    try {
+      await navigator.clipboard.writeText(EMAIL_ADDRESS);
+      setCopyState('success');
+    } catch {
+      setCopyState('error');
+    }
+
+    if (copyFeedbackTimeoutRef.current) {
+      window.clearTimeout(copyFeedbackTimeoutRef.current);
+    }
+
+    copyFeedbackTimeoutRef.current = window.setTimeout(() => {
+      setCopyState('idle');
+    }, 2200);
+  };
+
+  const particles = Array.from({ length: 18 }, (_, index) => {
+    const angle = (Math.PI * 2 * index) / 18;
+    const distance = 130 + (index % 4) * 28;
+    return {
+      id: index,
+      style: {
+        '--tx': `${Math.cos(angle) * distance}px`,
+        '--ty': `${Math.sin(angle) * distance}px`,
+        '--rot': `${(index % 2 === 0 ? 1 : -1) * (120 + index * 14)}deg`,
+        '--delay': `${(index % 6) * 45}ms`,
+        '--size': `${6 + (index % 3) * 3}px`
+      }
+    };
+  });
 
   const experiences = [
     {
@@ -184,7 +366,16 @@ function App() {
 
       <section className="hero">
         <div className="hero-content">
-          <AnimatedSection className="hero-label" variant="zoom" threshold={0.2}>
+          <AnimatedSection
+            as="button"
+            type="button"
+            elementRef={heroBadgeRef}
+            className="hero-label hero-label-trigger"
+            variant="zoom"
+            threshold={0.2}
+            onClick={handleHeroLabelTap}
+            aria-label="Available for opportunities. Hidden interaction."
+          >
             Available for opportunities
           </AnimatedSection>
           <AnimatedSection as="h1" className="hero-title" variant="up" delay={120} threshold={0.2}>
@@ -309,6 +500,83 @@ function App() {
           </AnimatedSection>
         </div>
       </section>
+
+      <AnimatePresence>
+        {isEasterEggOpen && (
+          <motion.div
+            className="egg-overlay"
+            role="presentation"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: prefersReducedMotion ? 0.16 : 0.3 }}
+            onClick={closeEasterEgg}
+          >
+            {!prefersReducedMotion && (
+              <div className="egg-celebration" aria-hidden="true">
+                {particles.map((particle) => (
+                  <span key={particle.id} className="egg-particle" style={particle.style} />
+                ))}
+              </div>
+            )}
+
+            <motion.div
+              className="egg-modal"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="egg-title"
+              aria-describedby="egg-description"
+              initial={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, y: 24, scale: 0.96 }}
+              animate={prefersReducedMotion ? { opacity: 1 } : { opacity: 1, y: 0, scale: 1 }}
+              exit={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, y: 12, scale: 0.98 }}
+              transition={{ duration: prefersReducedMotion ? 0.16 : 0.32, ease: [0.22, 1, 0.36, 1] }}
+              onClick={(event) => event.stopPropagation()}
+            >
+              <button
+                ref={easterEggCloseButtonRef}
+                type="button"
+                className="egg-close"
+                onClick={closeEasterEgg}
+                aria-label="Close easter egg"
+              >
+                ✕
+              </button>
+
+              <div className="egg-envelope" aria-hidden="true">
+                ✉
+              </div>
+
+              <h3 id="egg-title" className="egg-title">You found the hidden signal.</h3>
+              <p id="egg-description" className="egg-description">
+                If you made it here, you are exactly the kind of curious person I like working with.
+                Send me a note and let&apos;s build something useful together.
+              </p>
+
+              <div className="egg-actions">
+                <a
+                  href={`mailto:${EMAIL_ADDRESS}?subject=${PREFILLED_SUBJECT}&body=${PREFILLED_BODY}`}
+                  className="btn btn-primary egg-action"
+                >
+                  Send Email
+                </a>
+                <button
+                  type="button"
+                  className="btn btn-outline egg-action"
+                  onClick={handleCopyEmail}
+                >
+                  Copy Email
+                </button>
+              </div>
+
+              <p className="egg-feedback" aria-live="polite">
+                {copyState === 'success' && 'Email copied to clipboard.'}
+                {copyState === 'error' && 'Could not copy automatically. Please copy manually.'}
+                {copyState === 'idle' && '\u00A0'}
+              </p>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <footer className="footer">
         <p className="footer-text">Designed & Built by Jason Cantor</p>
