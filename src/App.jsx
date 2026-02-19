@@ -332,7 +332,7 @@ function App() {
     {
       company: "Camp Sea Gull & Camp Seafarer",
       role: "Archery Program Director & Instructor",
-      date: "Summer 2022",
+      date: "Summer 21-23",
       description: "Directed the archery program at one of the largest overnight camps in the U.S., focused on safety and skill development.",
       details: [
         "Oversaw safety protocols and skill development for 1,000+ campers and staff",
