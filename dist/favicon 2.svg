@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64" role="img" aria-label="JC">
+  <defs>
+    <linearGradient id="bg" x1="8" y1="6" x2="56" y2="58" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#14356B" />
+      <stop offset="1" stop-color="#0A1A38" />
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="15" fill="url(#bg)" />
+  <rect x="1" y="1" width="62" height="62" rx="14" fill="none" stroke="#AB0520" stroke-opacity="0.45" />
+  <text
+    x="32"
+    y="35"
+    fill="#F5F8FF"
+    font-family="Inter, 'Helvetica Neue', Arial, sans-serif"
+    font-size="28"
+    font-weight="700"
+    text-anchor="middle"
+    dominant-baseline="middle"
+    letter-spacing="0.3"
+  >JC</text>
+  <circle cx="48" cy="17" r="4.2" fill="#AB0520" />
+</svg>

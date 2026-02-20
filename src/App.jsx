@@ -49,10 +49,7 @@ const useScrollAnimation = (threshold = 0.1) => {
 
     const observer = new IntersectionObserver(
       ([entry]) => {
-        if (entry.isIntersecting) {
-          setIsVisible(true);
-          observer.unobserve(element);
-        }
+        setIsVisible(entry.isIntersecting);
       },
       { threshold, rootMargin: '0px 0px -50px 0px' }
     );
@@ -485,27 +482,6 @@ function App() {
 
       <section className="section">
         <div className="container">
-          <div className="stats-grid">
-            <AnimatedSection variant="left" delay={0}>
-              <div className="stat-card">
-                <div className="stat-number">20+</div>
-                <div className="stat-label">Hours/Week Saved</div>
-              </div>
-            </AnimatedSection>
-            <AnimatedSection variant="up" delay={120}>
-              <div className="stat-card">
-                <div className="stat-number">20+</div>
-                <div className="stat-label">Tools & Apps Built</div>
-              </div>
-            </AnimatedSection>
-            <AnimatedSection variant="right" delay={240}>
-              <div className="stat-card">
-                <div className="stat-number">10+</div>
-                <div className="stat-label">Systems Integrated</div>
-              </div>
-            </AnimatedSection>
-          </div>
-
           <div id="work">
             <AnimatedSection className="section-header" variant="left">
               <p className="section-label">// EXPERIENCE</p>
