@@ -6,7 +6,7 @@ const EASTER_COOLDOWN_MS = 30000;
 const BRIGHT_PHASE_WINDOW = 0.18;
 const DEFAULT_PULSE_DURATION_MS = 2000;
 const HOVER_CAPABLE_MEDIA_QUERY = '(hover: hover) and (pointer: fine)';
-const EMAIL_ADDRESS = 'jcantor@arizona.edu';
+const EMAIL_ADDRESS = 'hi@jasoncantor.com';
 const PREFILLED_SUBJECT = encodeURIComponent('Found your hidden portfolio easter egg');
 const PREFILLED_BODY = encodeURIComponent(
   "Hey Jason,\n\nI found the hidden easter egg on your site and wanted to reach out.\n\nLet's connect."
