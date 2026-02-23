@@ -439,7 +439,7 @@ function App() {
         <div className="nav-links">
           <a href="#work" className="nav-link">Work</a>
           <a href="#skills" className="nav-link">Skills</a>
-          <a href="mailto:jcantor@arizona.edu" className="btn btn-primary">Contact</a>
+          <a href="mailto:hi@jasoncantor.com" className="btn btn-primary">Contact</a>
         </div>
       </nav>
 
@@ -553,8 +553,8 @@ function App() {
               Let's Build <span>Something Great</span>
             </h2>
             <p className="contact-subtitle">Currently based in Tucson, AZ</p>
-            <a href="mailto:jcantor@arizona.edu" className="contact-email">
-              jcantor@arizona.edu
+            <a href="mailto:hi@jasoncantor.com" className="contact-email">
+              hi@jasoncantor.com
             </a>
             <p className="contact-footer">University of Arizona '26</p>
           </AnimatedSection>
