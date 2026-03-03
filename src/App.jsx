@@ -226,6 +226,7 @@ function App() {
   const [cooldownUntil, setCooldownUntil] = useState(0);
   const [isEasterEggOpen, setIsEasterEggOpen] = useState(false);
   const [copyState, setCopyState] = useState('idle');
+  const [isIntroVisible, setIsIntroVisible] = useState(true);
   const [pulseDurationMs, setPulseDurationMs] = useState(DEFAULT_PULSE_DURATION_MS);
   const pulseStartRef = useRef(0);
   const copyFeedbackTimeoutRef = useRef(null);
@@ -304,6 +305,19 @@ function App() {
     },
     []
   );
+
+  useEffect(() => {
+    if (prefersReducedMotion) {
+      setIsIntroVisible(false);
+      return undefined;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setIsIntroVisible(false);
+    }, 1300);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [prefersReducedMotion]);
 
   const resetTapSequence = () => {
     setTapProgress(0);
@@ -431,8 +445,41 @@ function App() {
   ];
 
   return (
-    <div>
-      <nav className="nav">
+    <motion.div
+      className="page-shell"
+      initial={prefersReducedMotion ? false : { opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: prefersReducedMotion ? 0 : 0.45, ease: [0.22, 1, 0.36, 1], delay: prefersReducedMotion ? 0 : 0.15 }}
+    >
+      <AnimatePresence>
+        {isIntroVisible && (
+          <motion.div
+            className="intro-overlay"
+            initial={{ opacity: 1 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: prefersReducedMotion ? 0 : 0.45, ease: 'easeOut' }}
+            aria-hidden="true"
+          >
+            <motion.div
+              className="intro-badge"
+              initial={prefersReducedMotion ? false : { scale: 0.82, y: 8, opacity: 0 }}
+              animate={{ scale: 1, y: 0, opacity: 1 }}
+              exit={prefersReducedMotion ? { opacity: 0 } : { scale: 0.9, y: -6, opacity: 0 }}
+              transition={{ duration: prefersReducedMotion ? 0 : 0.5, ease: [0.22, 1, 0.36, 1] }}
+            >
+              JC
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <motion.nav
+        className="nav"
+        initial={prefersReducedMotion ? false : { y: -20, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ duration: prefersReducedMotion ? 0 : 0.45, ease: [0.22, 1, 0.36, 1], delay: prefersReducedMotion ? 0 : 0.42 }}
+      >
         <div className="nav-logo">
           JC<span>.</span>
         </div>
@@ -441,7 +488,7 @@ function App() {
           <a href="#skills" className="nav-link">Skills</a>
           <a href="mailto:hi@jasoncantor.com" className="btn btn-primary">Contact</a>
         </div>
-      </nav>
+      </motion.nav>
 
       <section className="hero">
         <div className="hero-content">
@@ -641,7 +688,7 @@ function App() {
       <footer className="footer">
         <p className="footer-text">Designed & Built by Jason Cantor</p>
       </footer>
-    </div>
+    </motion.div>
   );
 }
 
